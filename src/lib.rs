@@ -68,7 +68,7 @@ pub struct Concept {
     // image_url: Option<String>,
     // image_thumbnail_url: Option<String>,
     // international: International,
-    ancestors: Vec<ConceptAncestor>,
+    // ancestors: Vec<ConceptAncestor>,
     // related_concepts: Vec<RelatedConcept>,
     pub counts_by_year: Vec<ConceptCountByYear>,
     pub works_api_url: String,
@@ -106,15 +106,19 @@ async fn get_concept_page(
     Ok(json)
 }
 
-pub async fn get_concepts(client: Client, level: &u32) -> Result<Vec<Concept>> {
+pub async fn get_concepts_cursor(client: &Client, level: &u32) {
+    println!("fetching page 1 of concept level: {level}");
+}
+
+pub async fn get_concepts_paged(client: &Client, level: &u32) -> Result<Vec<Concept>> {
     println!("fetching page 1 of ??? of level: {level}");
-    let first_response = get_concept_page(&client, 1, &level).await?;
+    let first_response = get_concept_page(client, 1, &level).await?;
     let max_results = first_response.meta.count;
     let last_page = max_results / first_response.meta.per_page + 1;
     let mut results = first_response.results;
     for current_page in 2..=last_page {
         println!("fetching page {current_page} of {last_page}");
-        let response_result = get_concept_page(&client, current_page, &level).await;
+        let response_result = get_concept_page(client, current_page, &level).await;
         match response_result {
             Ok(res) => res
                 .results
@@ -128,14 +132,19 @@ pub async fn get_concepts(client: Client, level: &u32) -> Result<Vec<Concept>> {
     Ok(results)
 }
 
-pub async fn get_all_level_concepts(Client: Client) -> Result<Vec<Concept>> {
-    let concepts: Vec<Concept> = vec![];
-    (0..=5).into_iter().for_each(|level: u32| async {})
+pub async fn get_all_level_concepts(client: &Client) -> Result<Vec<Concept>> {
+    let mut concepts: Vec<Concept> = vec![];
+    for level in 0..=5 {
+        let level_concepts = get_concepts_paged(client, &level).await?;
+        level_concepts
+            .into_iter()
+            .for_each(|concept| concepts.push(concept));
+    }
     Ok(concepts)
 }
 
-pub fn write_concepts_to_csv_file(concepts: Vec<Concept>, level: &u32) -> Result<()> {
-    let filename = format!("level_{level}_concepts.csv");
+pub fn write_concepts_to_csv_file(concepts: Vec<Concept>, filename: String) -> Result<()> {
+    let filename = format!("{filename}.csv");
     println!("writing to \"{filename}\"");
     let mut csv_writer = csv::Writer::from_path(filename)?;
     for concept in concepts.iter() {

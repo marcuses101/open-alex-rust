@@ -1,16 +1,34 @@
 use eyre::Result;
-use open_alex_rust::Concept;
 use std::env;
 use std::process;
+
+enum Mode {
+    All,
+    Level,
+}
+
 struct Config {
-    level: u32,
+    mode: Mode,
+    level: Option<u32>,
 }
 
 impl Config {
     pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config> {
         args.next();
-        let level: u32 = args.next().unwrap().parse()?;
-        Ok(Config { level })
+        let level = args.next();
+        match level {
+            Some(lev) => {
+                let level_int: u32 = lev.parse()?;
+                Ok(Config {
+                    level: Some(level_int),
+                    mode: Mode::Level,
+                })
+            }
+            None => Ok(Config {
+                level: None,
+                mode: Mode::All,
+            }),
+        }
     }
 }
 
@@ -20,11 +38,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Problem parsing arguments: {er}");
         process::exit(1);
     });
-    let level = &config.level;
     let client = reqwest::Client::new();
-    let concepts: Vec<Concept> = vec![];
-
-    // let concepts = open_alex_rust::get_concepts(client, level).await?;
-    open_alex_rust::write_concepts_to_csv_file(concepts, level)?;
+    let (concepts, filename) = match config.mode {
+        Mode::All => (
+            open_alex_rust::get_all_level_concepts(&client).await?,
+            "all_concepts".to_string(),
+        ),
+        Mode::Level => {
+            let level = &config.level.unwrap();
+            (
+                open_alex_rust::get_concepts_paged(&client, level).await?,
+                format!("level_{level}_concepts"),
+            )
+        }
+    };
+    open_alex_rust::write_concepts_to_csv_file(concepts, filename)?;
     Ok(())
 }
