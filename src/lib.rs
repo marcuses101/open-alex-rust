@@ -106,8 +106,32 @@ async fn get_concept_page(
     Ok(json)
 }
 
-pub async fn get_concepts_cursor(client: &Client, level: &u32) {
+async fn get_concept_cursor_result(
+    client: &Client,
+    cursor: String,
+    level: &u32,
+) -> Result<OpenAlexResponse<Concept>> {
+    let per_page: u32 = 200;
+    let path = format!(
+        "https://api.openalex.org/concepts?filter=level:{level}&per-page={per_page}&cursor={cursor}"
+    );
+    let response = client
+        .get(path)
+        .header(USER_AGENT, "mailto:mnjconnolly@gmail.com")
+        .send()
+        .await?;
+    let json = response.json::<OpenAlexResponse<Concept>>().await?;
+    Ok(json)
+}
+
+pub async fn get_concepts_cursor(client: &Client, level: &u32) -> Result<Vec<Concept>> {
     println!("fetching page 1 of concept level: {level}");
+    let mut next_cursor = Some("*".to_string());
+    {
+        let cursor = next_cursor.unwrap().to_string();
+    }
+    let first_response = get_concept_cursor_result(client, "*".to_string(), level).await?;
+    Ok(first_response.results)
 }
 
 pub async fn get_concepts_paged(client: &Client, level: &u32) -> Result<Vec<Concept>> {
@@ -143,8 +167,12 @@ pub async fn get_all_level_concepts(client: &Client) -> Result<Vec<Concept>> {
     Ok(concepts)
 }
 
-pub fn write_concepts_to_csv_file(concepts: Vec<Concept>, filename: String) -> Result<()> {
-    let filename = format!("{filename}.csv");
+pub fn write_concepts_to_csv_file(
+    concepts: Vec<Concept>,
+    filename: impl Into<String>,
+) -> Result<()> {
+    let filename_as_string = filename.into();
+    let filename = format!("{filename_as_string}.csv");
     println!("writing to \"{filename}\"");
     let mut csv_writer = csv::Writer::from_path(filename)?;
     for concept in concepts.iter() {
