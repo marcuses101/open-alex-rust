@@ -15,8 +15,9 @@ pub struct ConceptCountByYear {
 pub struct OpenAlexMeta {
     count: u32,
     db_response_time_ms: u32,
-    page: u32,
+    page: Option<u32>,
     per_page: u32,
+    next_cursor: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -108,7 +109,7 @@ async fn get_concept_page(
 
 async fn get_concept_cursor_result(
     client: &Client,
-    cursor: String,
+    cursor: &String,
     level: &u32,
 ) -> Result<OpenAlexResponse<Concept>> {
     let per_page: u32 = 200;
@@ -125,13 +126,19 @@ async fn get_concept_cursor_result(
 }
 
 pub async fn get_concepts_cursor(client: &Client, level: &u32) -> Result<Vec<Concept>> {
-    println!("fetching page 1 of concept level: {level}");
+    let mut page = 1;
     let mut next_cursor = Some("*".to_string());
-    {
-        let cursor = next_cursor.unwrap().to_string();
+    let mut concepts = vec![];
+    while let Some(cur) = next_cursor {
+        println!("fetching page {page} of concept level: {level}");
+        let res = get_concept_cursor_result(client, &cur, level).await?;
+        next_cursor = res.meta.next_cursor;
+        res.results
+            .into_iter()
+            .for_each(|concept| concepts.push(concept));
+        page += 1;
     }
-    let first_response = get_concept_cursor_result(client, "*".to_string(), level).await?;
-    Ok(first_response.results)
+    Ok(concepts)
 }
 
 pub async fn get_concepts_paged(client: &Client, level: &u32) -> Result<Vec<Concept>> {
@@ -159,7 +166,7 @@ pub async fn get_concepts_paged(client: &Client, level: &u32) -> Result<Vec<Conc
 pub async fn get_all_level_concepts(client: &Client) -> Result<Vec<Concept>> {
     let mut concepts: Vec<Concept> = vec![];
     for level in 0..=5 {
-        let level_concepts = get_concepts_paged(client, &level).await?;
+        let level_concepts = get_concepts_cursor(client, &level).await?;
         level_concepts
             .into_iter()
             .for_each(|concept| concepts.push(concept));
