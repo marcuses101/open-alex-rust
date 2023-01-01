@@ -5,13 +5,13 @@ use reqwest::{header::USER_AGENT, Client};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ConceptCountByYear {
     year: u32,
     works_count: u32,
     cited_by_count: u32,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OpenAlexMeta {
     count: u32,
     db_response_time_ms: u32,
@@ -20,13 +20,13 @@ pub struct OpenAlexMeta {
     next_cursor: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct OpenAlexResponse<T> {
     meta: OpenAlexMeta,
     results: Vec<T>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct IdsObject {
     openalex: String,
     wikidata: Option<String>,
@@ -36,7 +36,7 @@ pub struct IdsObject {
     umls_cui: Option<Vec<String>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ConceptAncestor {
     id: String,
     wikidata: Option<String>,
@@ -44,7 +44,7 @@ pub struct ConceptAncestor {
     level: u32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RelatedConcept {
     id: String,
     wikidata: Option<String>,
@@ -52,11 +52,11 @@ pub struct RelatedConcept {
     level: u32,
     score: f32,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct International {
     display_name: HashMap<String, String>,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Concept {
     pub id: String,
     // wikidata: Option<String>,

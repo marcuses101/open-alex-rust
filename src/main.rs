@@ -1,7 +1,15 @@
+use crate::surreal_client::root_client;
 use eyre::Result;
+use open_alex_rust::Concept;
+use serde::Deserialize;
+use serde::Serialize;
+use std::borrow::Cow;
 use std::env;
 use std::process;
+use surrealdb_rs::net::WsClient;
+use surrealdb_rs::Surreal;
 
+pub mod surreal_client;
 enum Mode {
     All,
     Level,
@@ -31,6 +39,11 @@ impl Config {
         }
     }
 }
+#[derive(Deserialize, Debug, Serialize)]
+struct Person {
+    id: Option<String>,
+    name: Cow<'static, str>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,8 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Problem parsing arguments: {er}");
         process::exit(1);
     });
+    let db_client = root_client("test", "test").await?;
     let client = reqwest::Client::new();
-    let (concepts, filename) = match config.mode {
+    let (concepts, _filename) = match config.mode {
         Mode::All => (
             open_alex_rust::get_all_level_concepts(&client).await?,
             "all_concepts".to_string(),
@@ -52,6 +66,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
         }
     };
-    open_alex_rust::write_concepts_to_csv_file(concepts, filename)?;
+    async fn create_concept_record(
+        concept: Concept,
+        db_client: &Surreal<WsClient>,
+    ) -> Result<Concept> {
+        let record: Concept = db_client
+            .create(("concept", concept.id.clone()))
+            .content(concept)
+            .await?;
+
+        Ok(record)
+    }
+    for concept in concepts {
+        let res = create_concept_record(concept, &db_client).await;
+        match res {
+            Err(e) => {
+                println!("{:#?}", e);
+            }
+            Ok(record) => {
+                println!("{} ({}) created", record.display_name, record.level)
+            }
+        }
+    }
+    // open_alex_rust::write_concepts_to_csv_file(concepts, filename)?;
     Ok(())
 }

@@ -1,0 +1,34 @@
+###
+POST http://localhost:8000/sql HTTP/1.1
+Accept: application/json
+Authorization: Basic root:root
+NS: test
+DB: test
+
+INFO FOR DB
+
+### Create person
+POST http://localhost:8000/sql HTTP/1.1
+Accept: application/json
+Authorization: Basic root:root
+NS: test
+DB: test
+
+CREATE person:marcus SET creation_time = time::now(), name = 'Marcus'
+
+
+### get people
+POST http://localhost:8000/sql HTTP/1.1
+Accept: application/json
+Authorization: Basic root:root
+NS: test
+DB: test
+
+SELECT level, count() FROM concept GROUP BY level ORDER BY level DESC;
+
+### delete concept
+DELETE http://localhost:8000/key/concept HTTP/1.1
+Accept: application/json
+Authorization: Basic root:root
+NS: test
+DB: test
